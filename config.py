@@ -161,4 +161,13 @@ PRESCRIPTION_ACTIONS = {         # 일관성 측정은 'action' 라벨 기준
 }
 URGENCY_LEVELS = ["높음", "중간", "낮음"]
 
-# ────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────
+# 7. 경로
+# ──────────────────────────────────────────────────────────────
+BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR   = os.path.join(BASE_DIR, "data")
+TRAIN_PATH = os.path.join(DATA_DIR, "train_FD001.txt")
+TEST_PATH  = os.path.join(DATA_DIR, "test_FD001.txt")
+RUL_PATH   = os.path.join(DATA_DIR, "RUL_FD001.txt")
+LOG_DIR    = os.path.join(BASE_DIR, "logs")
+RESULT_DIR = os.path.join(BASE_DIR, "results")

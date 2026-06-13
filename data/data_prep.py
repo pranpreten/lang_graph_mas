@@ -95,4 +95,27 @@ def data_summary(X_train, task):
         "target_desc": spec.get("target", "없음(비지도)"),
         "metric": spec["metric"],
         "n_samples": int(X_train.shape[0]),
-        "n_features": int(X
+        "n_features": int(X_train.shape[1]),
+        "features": list(X_train.columns),
+        "low_variance_features": low_var,                    # "이건 빼라" 힌트
+        "feature_stats": {
+            col: {"mean": float(round(desc.loc[col, "mean"], 3)),
+                  "std":  float(round(desc.loc[col, "std"], 3)),
+                  "min":  float(round(desc.loc[col, "min"], 3)),
+                  "max":  float(round(desc.loc[col, "max"], 3))}
+            for col in X_train.columns
+        },
+    }
+
+
+if __name__ == "__main__":
+    # 3태스크 전부 한 번에 점검
+    for t in c.TASKS:
+        Xtr, ytr, Xte, yte = make_task(t)
+        s = data_summary(Xtr, t)
+        ytr_info = "None(비지도)" if ytr is None else str(ytr.shape)
+        print(f"[{t:14s}] X_train {str(Xtr.shape):12s} y_train {ytr_info:12s} "
+              f"X_test {str(Xte.shape):9s} y_test {yte.shape}")
+    print()
+    s = data_summary(make_task("regression")[0], "regression")
+    print("요약 예시(회귀) — 저분산(쓸모없는) 센서:", s["low_variance_features"])
