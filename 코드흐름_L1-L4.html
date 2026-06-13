@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>graph.py 코드 흐름 — L1~L4</title>
+<style>
+  :root{
+    --bg:#0f1420; --panel:#171e2e; --panel2:#1d2638; --ink:#e8edf6; --muted:#94a3b8;
+    --line:#2b3650; --accent:#4d8bff;
+    --cmd:#f59e0b; --cmd-soft:#3a2e12;      /* 커맨더(LLM) */
+    --slm:#22c597; --slm-soft:#10342a;      /* SLM 단계 */
+    --ctrl:#ef6464; --ctrl-soft:#3a1717;    /* control_ml(L4) */
+    --off:#2a3344;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic",sans-serif;line-height:1.6;font-size:15px;}
+  .wrap{max-width:1000px;margin:0 auto;padding:30px 20px 80px;}
+  h1{font-size:22px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:17px;margin:34px 0 12px;padding-bottom:7px;border-bottom:1px solid var(--line);}
+
+  /* level buttons */
+  .levels{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;}
+  .lvbtn{flex:1;min-width:140px;background:var(--panel);border:1.5px solid var(--line);
+    border-radius:12px;padding:12px;cursor:pointer;color:var(--ink);transition:.15s;text-align:left;}
+  .lvbtn:hover{border-color:var(--accent);}
+  .lvbtn.active{border-color:var(--accent);background:var(--panel2);box-shadow:0 0 0 3px rgba(77,139,255,.18);}
+  .lvbtn .nm{font-weight:700;}
+  .lvbtn .ds{color:var(--muted);font-size:12px;margin-top:2px;}
+  .lvbtn .cc{display:inline-block;margin-top:7px;font-size:11px;background:var(--cmd);color:#1a1205;border-radius:999px;padding:2px 9px;font-weight:700;}
+
+  .layout{display:grid;grid-template-columns:1fr 300px;gap:18px;}
+  @media(max-width:780px){.layout{grid-template-columns:1fr;}}
+
+  /* flow */
+  .flow{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;}
+  .start,.end{text-align:center;font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.05em;}
+  .arrow{text-align:center;color:var(--muted);font-size:14px;line-height:1;margin:3px 0;}
+  .node{border-radius:10px;padding:9px 13px;margin:0 auto;max-width:440px;text-align:center;
+    border:1.5px solid var(--line);transition:.18s;position:relative;}
+  .node .ttl{font-weight:700;font-size:14px;}
+  .node .fn{font-size:11px;color:var(--muted);font-family:Consolas,monospace;}
+  .node.hidden{display:none;}
+  /* node types */
+  .n-route{background:var(--cmd-soft);border-color:var(--cmd);}
+  .n-route .ttl{color:var(--cmd);}
+  .n-cmd{background:var(--cmd-soft);border-color:var(--cmd);}
+  .n-cmd .ttl{color:var(--cmd);}
+  .n-slm{background:var(--slm-soft);border-color:var(--slm);}
+  .n-slm .ttl{color:var(--slm);}
+  .n-ctrl{background:var(--ctrl-soft);border-color:var(--ctrl);}
+  .n-ctrl .ttl{color:var(--ctrl);}
+  .tag{font-size:10px;border-radius:5px;padding:1px 6px;font-weight:700;margin-left:5px;vertical-align:middle;}
+  .tag-llm{background:var(--cmd);color:#1a1205;}
+  .tag-slm{background:var(--slm);color:#04261b;}
+
+  .stagebox{border:1px dashed var(--line);border-radius:12px;padding:10px;margin:6px auto;max-width:480px;}
+  .stagebox .lbl{font-size:11px;color:var(--muted);text-align:center;margin-bottom:6px;letter-spacing:.04em;}
+  /* retry loop badge */
+  .retry{font-size:11px;color:var(--cmd);text-align:center;margin-top:4px;}
+  .retry.hidden{display:none;}
+
+  /* side panel */
+  .side{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;height:fit-content;position:sticky;top:16px;}
+  .side h3{margin:0 0 8px;font-size:15px;color:var(--accent);}
+  .side .row{margin:8px 0;font-size:13.5px;}
+  .side b{color:var(--ink);}
+  .chip{display:inline-block;font-size:11px;border-radius:6px;padding:1px 7px;margin-right:4px;}
+  .chip.cmd{background:var(--cmd-soft);color:var(--cmd);}
+  .chip.slm{background:var(--slm-soft);color:var(--slm);}
+  .chip.ctrl{background:var(--ctrl-soft);color:var(--ctrl);}
+
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin:10px 0 0;}
+  .legend span::before{content:"●";margin-right:5px;}
+  .lg-cmd::before{color:var(--cmd);} .lg-slm::before{color:var(--slm);} .lg-ctrl::before{color:var(--ctrl);}
+
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px;background:var(--panel);border-radius:10px;overflow:hidden;border:1px solid var(--line);}
+  th,td{padding:8px 11px;text-align:left;border-bottom:1px solid var(--line);}
+  th{background:var(--panel2);color:var(--accent);font-size:12px;}
+  tr:last-child td{border-bottom:none;}
+  code{background:rgba(255,255,255,.07);padding:1px 5px;border-radius:4px;font-family:Consolas,monospace;font-size:12.5px;}
+  .note{color:var(--muted);font-size:13px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>graph.py 코드 흐름 — L1 ~ L4</h1>
+<p class="sub">레벨 버튼을 누르면 그래프 노드가 켜지고, 커맨더 개입과 재시도 루프가 어떻게 달라지는지 보입니다. (실제 <code>build_graph(level)</code>이 만드는 구조)</p>
+
+<div class="legend">
+  <span class="lg-cmd">커맨더 노드 (Claude) — commander.py</span>
+  <span class="lg-slm">SLM 단계 노드 (Ollama) — nodes/*.py</span>
+  <span class="lg-ctrl">control_ml (L4) — 커맨더가 모델 지정</span>
+</div>
+
+<div class="levels">
+  <button class="lvbtn active" data-lv="L1" onclick="setLevel('L1')">
+    <div class="nm">L1 최소</div><div class="ds">분배만, 이후 자율</div><span class="cc">커맨더 ≈1회</span>
+  </button>
+  <button class="lvbtn" data-lv="L2" onclick="setLevel('L2')">
+    <div class="nm">L2 체크포인트</div><div class="ds">단계마다 검토</div><span class="cc">커맨더 ≈5회</span>
+  </button>
+  <button class="lvbtn" data-lv="L3" onclick="setLevel('L3')">
+    <div class="nm">L3 적극</div><div class="ds">가이드+검토</div><span class="cc">커맨더 ≈9회</span>
+  </button>
+  <button class="lvbtn" data-lv="L4" onclick="setLevel('L4')">
+    <div class="nm">L4 완전통제</div><div class="ds">모델까지 지정</div><span class="cc">커맨더 ≈10회+</span>
+  </button>
+</div>
+
+<div class="layout">
+  <!-- ===== FLOW ===== -->
+  <div class="flow">
+    <div class="start">▶ START</div>
+    <div class="arrow">↓</div>
+    <div class="node n-route"><div class="ttl">route <span class="tag tag-llm">커맨더</span></div><div class="fn">commander.route() · 작업 분배</div></div>
+    <div class="arrow">↓</div>
+
+    <!-- stages, filled by JS -->
+    <div id="stages"></div>
+
+    <div class="end">■ END</div>
+  </div>
+
+  <!-- ===== SIDE PANEL ===== -->
+  <div class="side" id="side"></div>
+</div>
+
+<!-- ===== code mapping ===== -->
+<h2>각 노드 = 어느 코드?</h2>
+<table>
+  <tr><th>노드</th><th>하는 일</th><th>코드 위치</th></tr>
+  <tr><td><span class="chip cmd">route</span></td><td>시작 작업 분배</td><td><code>nodes/commander.py · route()</code></td></tr>
+  <tr><td><span class="chip cmd">guide</span></td><td>단계 시작 가이드 (L3·L4)</td><td><code>commander.py · guide()</code></td></tr>
+  <tr><td><span class="chip slm">perception~prescription</span></td><td>SLM이 실제 단계 수행</td><td><code>nodes/perception.py 등</code></td></tr>
+  <tr><td><span class="chip ctrl">control_ml</span></td><td>L4: 모델·HP 직접 지정</td><td><code>commander.py · control_ml()</code></td></tr>
+  <tr><td><span class="chip cmd">review</span></td><td>검토 → 통과/재시도 (L2~L4)</td><td><code>commander.py · review()</code> + 재시도 관리는 <code>graph.py</code></td></tr>
+</table>
+<p class="note">조립(누가 언제 끼는지)은 전부 <code>graph.py · build_graph(level)</code> 한 함수가 <code>INTERVENTION_POLICY[level]</code>을 읽어 결정합니다.</p>
+
+<!-- ===== data flow note ===== -->
+<h2>데이터(state)는 어떻게 흐르나</h2>
+<p class="note">노드 하나가 <b>state</b>(공유 보따리)를 받아 → 일하고 → 바뀐 부분만 돌려주면, LangGraph가 그걸 state에 합쳐 다음 노드로 넘깁니다. 커맨더가 남긴 지침/피드백은 <code>commander_input</code>에 담겨 다음 단계 SLM 프롬프트에 주입돼요(재시도가 의미를 갖는 이유). 비용(호출·토큰)은 자동 누적됩니다.</p>
+
+<footer style="margin-top:36px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px;">
+graph.py · build_graph(level) 구조 시각화 · 단일 그래프 + 정책 주입
+</footer>
+</div>
+
+<script>
+const STAGES = [
+  {key:"perception",   ttl:"① 인지",   fn:"perception_node · 데이터 파악"},
+  {key:"preprocessing",ttl:"② 전처리", fn:"preprocessing_node · 피처·정규화 결정"},
+  {key:"analysis",     ttl:"③ 분석",   fn:"analysis_node · 모델 선택+sklearn 학습"},
+  {key:"prescription", ttl:"④ 처방",   fn:"prescription_node · 조치 결정"},
+];
+
+// 레벨별 정책
+const POLICY = {
+  L1:{pre:false, post:false, ctrl:false},
+  L2:{pre:false, post:true,  ctrl:false},
+  L3:{pre:true,  post:true,  ctrl:false},
+  L4:{pre:true,  post:true,  ctrl:true },
+};
+const DESC = {
+  L1:{calls:"≈1회", what:"시작에 <b>route</b>로 한 번 분배하고 끝. 이후 4단계를 SLM이 자율로 진행. 검토·가이드 없음 → 직선 흐름, 재시도 없음.", risk:"가장 싸지만 결과가 들쭉날쭉(불안정)."},
+  L2:{calls:"≈5회", what:"route(1) + 각 단계 끝에 <b>review</b>(4). 결과 보고 통과/재시도만 판정(내용 지시는 X). 재시도면 같은 단계로 루프.", risk:"깨진 결과를 걸러 완주율↑."},
+  L3:{calls:"≈9회", what:"route(1) + 각 단계 앞 <b>guide</b>(4) + 뒤 <b>review</b>(4). 시작 가이드를 주고 끝에 검토. (기반 논문[3] 수준)", risk:"결정이 통일돼 일관성↑."},
+  L4:{calls:"≈10회+", what:"L3 + 분석 앞 <b>control_ml</b>: 커맨더가 모델·HP를 직접 지정, SLM은 실행만.", risk:"가장 안정적이지만 비용↑. (단독 LLM에 가장 가까운 끝)"},
+};
+
+function nodeHTML(cls, ttl, fn){
+  return `<div class="node ${cls}"><div class="ttl">${ttl}</div><div class="fn">${fn}</div></div>`;
+}
+
+function setLevel(lv){
+  document.querySelectorAll('.lvbtn').forEach(b=>b.classList.toggle('active', b.dataset.lv===lv));
+  const p = POLICY[lv];
+  let html = "";
+  STAGES.forEach((s,i)=>{
+    let inner = `<div class="lbl">— 단계 ${i+1} —</div>`;
+    if(p.pre)  inner += nodeHTML("n-cmd", `guide_${s.key} <span class="tag tag-llm">커맨더</span>`, "commander.guide() · 시작 가이드") + `<div class="arrow">↓</div>`;
+    if(p.ctrl && s.key==="analysis") inner += nodeHTML("n-ctrl", "control_ml 🔒", "commander.control_ml() · 모델 직접 지정") + `<div class="arrow">↓</div>`;
+    inner += nodeHTML("n-slm", `${s.ttl} <span class="tag tag-slm">SLM</span>`, s.fn);
+    if(p.post){
+      inner += `<div class="arrow">↓</div>` + nodeHTML("n-cmd", `review_${s.key} <span class="tag tag-llm">커맨더</span>`, "commander.review() · 통과/재시도");
+      inner += `<div class="retry">⟲ 재시도면 위 '${s.ttl}'로 되돌아감 (조건부 엣지, 최대 ${2}회)</div>`;
+    }
+    html += `<div class="stagebox">${inner}</div>`;
+    html += `<div class="arrow">↓</div>`;
+  });
+  document.getElementById("stages").innerHTML = html;
+
+  const d = DESC[lv];
+  document.getElementById("side").innerHTML =
+    `<h3>${lv} — 커맨더 ${d.calls}</h3>
+     <div class="row"><b>흐름:</b> ${d.what}</div>
+     <div class="row"><b>효과:</b> ${d.risk}</div>
+     <div class="row note">정책: pre=${p.pre} · post=${p.post} · control_ml=${p.ctrl}</div>`;
+}
+setLevel('L1');
+</script>
+</body>
+</html>

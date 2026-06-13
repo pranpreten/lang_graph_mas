@@ -115,6 +115,14 @@ INTERVENTION_POLICY = {
 MAX_RETRIES = 2          # post에서 '재시도' 판정 시 같은 단계 최대 재실행 횟수
 STAGES = ["perception", "preprocessing", "analysis", "prescription"]  # 고정 순서
 
+# 검토(review) 품질 임계값 — 분석 점수가 이 미만이면 자동 재시도 (1층, 코드 판정).
+# 전 레벨 동일 고정. 지표는 TASK_SPECS[task]["metric"] 기준.
+QUALITY_THRESHOLDS = {
+    "f1":      0.5,   # 분류
+    "r2":      0.5,   # 회귀
+    "roc_auc": 0.6,   # 이상탐지 (0.5=랜덤)
+}
+
 # ──────────────────────────────────────────────────────────────
 # 6. 처방 정책표 — 임계치 고정. SLM은 '적용'만(추론형: 근거는 자유, 조치는 고정집합).
 #    (값은 문헌 관례 기반. 전 레벨 동일 고정이 철칙.)

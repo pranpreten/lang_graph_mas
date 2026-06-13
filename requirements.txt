@@ -1,0 +1,13 @@
+# RxM 멀티에이전트 실험 — Python 패키지
+# 설치:  pip install -r requirements.txt
+
+# 핵심 (버전 고정 — 재현성)
+langgraph==1.2.4
+scikit-learn==1.7.2
+pandas==2.3.3
+numpy==2.2.6
+
+# 모델 호출
+anthropic            # 커맨더 (Claude Opus 4.8) — 최신 필요
+ollama               # SLM (qwen3:8b) 파이썬 클라이언트
+python-dotenv        # .env 에서 API 키 로드
