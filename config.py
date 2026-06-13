@@ -30,7 +30,7 @@ COMMANDER_TEMPERATURE = 0.0
 COMMANDER_THINKING = False            # 재현성: thinking 비활성
 
 # SLM: 로컬(Ollama) 실행자. VRAM엔 1개만 올라가면 됨(4단계 동일 모델 재사용).
-SLM_MODEL = "qwen3:8b"   # 서버 GPU에서 실행 (로컬 GTX1650 4GB는 부족 → 서버로)
+SLM_MODEL = "qwen3:4b"   # 서버 GPU 슬라이스에 통째로 올라가 빠름·안정 (8b는 부분로드→느림/hang)
 SLM_OPTIONS = {                       # Ollama 결정성 옵션 (완전 결정론 불가, 노이즈 최소화)
     "temperature": 0.0, "top_p": 0.0, "top_k": 1,
     "seed": 42, "num_ctx": 4096,      # 8192→4096: kv캐시 줄여 OOM 회피 (우리 프롬프트엔 충분)
@@ -161,13 +161,4 @@ PRESCRIPTION_ACTIONS = {         # 일관성 측정은 'action' 라벨 기준
 }
 URGENCY_LEVELS = ["높음", "중간", "낮음"]
 
-# ──────────────────────────────────────────────────────────────
-# 7. 경로
-# ──────────────────────────────────────────────────────────────
-BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR   = os.path.join(BASE_DIR, "data")
-TRAIN_PATH = os.path.join(DATA_DIR, "train_FD001.txt")
-TEST_PATH  = os.path.join(DATA_DIR, "test_FD001.txt")
-RUL_PATH   = os.path.join(DATA_DIR, "RUL_FD001.txt")
-LOG_DIR    = os.path.join(BASE_DIR, "logs")
-RESULT_DIR = os.path.join(BASE_DIR, "results")
+# ────────────────────────────────────────

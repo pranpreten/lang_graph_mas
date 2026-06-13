@@ -72,14 +72,4 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--pilot", action="store_true", help="각 조건 1회씩만 (빠른 점검)")
     ap.add_argument("--repeats", type=int, default=None)
-    ap.add_argument("--levels", nargs="+", default=None)
-    ap.add_argument("--tasks", nargs="+", default=None)
-    ap.add_argument("--dry", action="store_true", help="실행 없이 계획만 출력")
-    ap.add_argument("--fresh", action="store_true", help="시작 시 기존 로그 비움")
-    a = ap.parse_args()
-
-    levels = a.levels or c.LEVELS
-    tasks = a.tasks or c.TASKS
-    repeats = 1 if a.pilot else (a.repeats or c.N_REPEATS)
-
-    run_batch(levels, tasks, repeats, dry=a.dry, fresh=a.fresh)
+    

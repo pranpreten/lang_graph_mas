@@ -1,12 +1,6 @@
 """
-llm.py — 커맨더(Claude Opus 4.8)·SLM(Ollama) 호출 + 전체 trace 기록.
-
-호출할 때마다 (system / 입력 / 응답 / 토큰)을 logs/trace.jsonl 에 한 줄씩 남긴다.
-→ "각 에이전트가 단계별로 뭐라고 했는지" 전부 보존 (흐름 재구성·검증·논문 부록용).
-
-준비물 (내 PC/서버):
-  pip install anthropic ollama python-dotenv
-  .env 에 ANTHROPIC_API_KEY,  Ollama 실행 + `ollama pull qwen3:8b`
+llm.py — 커맨더(Claude)·SLM(Ollama) 호출 + trace 기록 + 타임아웃.
+타임아웃 걸어서 한 호출이 멈춰도 무한 대기 안 하고 에러 → runner가 실패로 기록하고 다음 런 진행.
 """
 import os, sys, json, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -19,8 +13,10 @@ except ImportError:
     pass
 
 TRACE_PATH = os.path.join(c.LOG_DIR, "trace.jsonl")
-TRACE = True                      # 전체 대화 기록 on/off
-_CTX = {"run_id": None}           # 현재 런 식별 (runner가 설정)
+TRACE = True
+_CTX = {"run_id": None}
+COMMANDER_TIMEOUT = 120      # 초
+SLM_TIMEOUT = 180            # 초
 
 
 def set_run_id(run_id):
@@ -43,14 +39,22 @@ def _get_anthropic():
     global _anthropic_client
     if _anthropic_client is None:
         from anthropic import Anthropic
-        _anthropic_client = Anthropic()
+        _anthropic_client = Anthropic(timeout=COMMANDER_TIMEOUT)
     return _anthropic_client
 
 
+_ollama_client = None
+def _get_ollama():
+    global _ollama_client
+    if _ollama_client is None:
+        import ollama
+        _ollama_client = ollama.Client(timeout=SLM_TIMEOUT)
+    return _ollama_client
+
+
 def call_commander(system, user_msg, max_tokens=1024):
-    """커맨더 LLM(Claude Opus 4.8) 호출. (Opus 4.8은 temperature 미지원)"""
-    client = _get_anthropic()
-    resp = client.messages.create(
+    """커맨더 LLM(Claude Opus 4.8) 호출."""
+    resp = _get_anthropic().messages.create(
         model=c.COMMANDER_MODEL, max_tokens=max_tokens,
         system=system, messages=[{"role": "user", "content": user_msg}],
     )
@@ -61,24 +65,17 @@ def call_commander(system, user_msg, max_tokens=1024):
 
 
 def call_slm(system, user_msg):
-    """SLM(Ollama, qwen3:8b) 호출."""
-    import ollama
+    """SLM(Ollama) 호출. think=False (qwen3 사고 끄기). 타임아웃 적용."""
+    client = _get_ollama()
+    kwargs = dict(model=c.SLM_MODEL,
+                  messages=[{"role": "system", "content": system},
+                            {"role": "user", "content": user_msg}],
+                  options=c.SLM_OPTIONS)
     try:
-        resp = ollama.chat(
-            model=c.SLM_MODEL,
-            messages=[{"role": "system", "content": system},
-                      {"role": "user", "content": user_msg}],
-            options=c.SLM_OPTIONS,
-            think=False,                     # qwen3 '사고' 끄기 → 속도↑·토큰↓·재현성↑
-        )
+        resp = client.chat(think=False, **kwargs)
     except TypeError:
-        # 구버전 ollama-python(think 미지원) → 프롬프트에 /no_think 로 대체
-        resp = ollama.chat(
-            model=c.SLM_MODEL,
-            messages=[{"role": "system", "content": system + " /no_think"},
-                      {"role": "user", "content": user_msg}],
-            options=c.SLM_OPTIONS,
-        )
+        kwargs["messages"][0]["content"] += " /no_think"   # 구버전 fallback
+        resp = client.chat(**kwargs)
     text = resp["message"]["content"]
     ptok = resp.get("prompt_eval_count", 0); ctok = resp.get("eval_count", 0)
     _trace("slm", system, user_msg, text, ptok, ctok)
@@ -89,4 +86,3 @@ if __name__ == "__main__":
     set_run_id("smoke-test")
     print("커맨더:", call_commander("너는 커맨더다.", "한 문장 자기소개")[0])
     print("SLM   :", call_slm("너는 분석 에이전트다.", "한 문장 자기소개")[0])
-    print(f"\n→ trace 기록: {TRACE_PATH}")
