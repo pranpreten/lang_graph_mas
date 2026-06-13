@@ -34,6 +34,7 @@ SLM_MODEL = "qwen3:4b"   # 서버 GPU 슬라이스에 통째로 올라가 빠름
 SLM_OPTIONS = {                       # Ollama 결정성 옵션 (완전 결정론 불가, 노이즈 최소화)
     "temperature": 0.0, "top_p": 0.0, "top_k": 1,
     "seed": 42, "num_ctx": 4096,      # 8192→4096: kv캐시 줄여 OOM 회피 (우리 프롬프트엔 충분)
+    "num_predict": 768,               # 출력 상한: thinking 폭주 안전장치 (응답엔 충분)
     # num_gpu 미지정 = Ollama가 들어가는 만큼 자동 오프로드 (부분 GPU, OOM 방지)
 }
 SLM_VARIANTS_OPTIONAL = ["phi4-mini", "qwen3:8b", "qwen3:30b"]  # (선택) SLM 역량 보조비교

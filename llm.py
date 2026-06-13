@@ -65,17 +65,19 @@ def call_commander(system, user_msg, max_tokens=1024):
 
 
 def call_slm(system, user_msg):
-    """SLM(Ollama) 호출. think=False (qwen3 사고 끄기). 타임아웃 적용."""
+    """SLM(Ollama) 호출. qwen3 사고(thinking) 끄기 + 출력 상한. 타임아웃 적용."""
     client = _get_ollama()
+    # qwen3 soft switch: think 파라미터를 서버가 무시해도 /no_think 토큰은 항상 먹힘.
+    # 현재 턴(user 메시지)에 넣는 게 가장 확실해서 system·user 양쪽에 박는다.
+    user_msg = user_msg + " /no_think"
     kwargs = dict(model=c.SLM_MODEL,
-                  messages=[{"role": "system", "content": system},
+                  messages=[{"role": "system", "content": system + " /no_think"},
                             {"role": "user", "content": user_msg}],
                   options=c.SLM_OPTIONS)
     try:
         resp = client.chat(think=False, **kwargs)
     except TypeError:
-        kwargs["messages"][0]["content"] += " /no_think"   # 구버전 fallback
-        resp = client.chat(**kwargs)
+        resp = client.chat(**kwargs)          # 구버전: /no_think 토큰만으로 처리
     text = resp["message"]["content"]
     ptok = resp.get("prompt_eval_count", 0); ctok = resp.get("eval_count", 0)
     _trace("slm", system, user_msg, text, ptok, ctok)
