@@ -33,8 +33,8 @@ COMMANDER_THINKING = False            # 재현성: thinking 비활성
 SLM_MODEL = "qwen3:8b"   # 서버 GPU에서 실행 (로컬 GTX1650 4GB는 부족 → 서버로)
 SLM_OPTIONS = {                       # Ollama 결정성 옵션 (완전 결정론 불가, 노이즈 최소화)
     "temperature": 0.0, "top_p": 0.0, "top_k": 1,
-    "seed": 42, "num_ctx": 8192,
-    "num_gpu": 99,                    # 모든 레이어 GPU 오프로드 (100% GPU, A100 40GB 여유)
+    "seed": 42, "num_ctx": 4096,      # 8192→4096: kv캐시 줄여 OOM 회피 (우리 프롬프트엔 충분)
+    # num_gpu 미지정 = Ollama가 들어가는 만큼 자동 오프로드 (부분 GPU, OOM 방지)
 }
 SLM_VARIANTS_OPTIONAL = ["phi4-mini", "qwen3:8b", "qwen3:30b"]  # (선택) SLM 역량 보조비교
 
