@@ -34,6 +34,7 @@ SLM_MODEL = "qwen3:8b"   # 서버 GPU에서 실행 (로컬 GTX1650 4GB는 부족
 SLM_OPTIONS = {                       # Ollama 결정성 옵션 (완전 결정론 불가, 노이즈 최소화)
     "temperature": 0.0, "top_p": 0.0, "top_k": 1,
     "seed": 42, "num_ctx": 8192,
+    "num_gpu": 99,                    # 모든 레이어 GPU 오프로드 (100% GPU, A100 40GB 여유)
 }
 SLM_VARIANTS_OPTIONAL = ["phi4-mini", "qwen3:8b", "qwen3:30b"]  # (선택) SLM 역량 보조비교
 

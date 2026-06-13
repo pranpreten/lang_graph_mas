@@ -63,12 +63,22 @@ def call_commander(system, user_msg, max_tokens=1024):
 def call_slm(system, user_msg):
     """SLM(Ollama, qwen3:8b) 호출."""
     import ollama
-    resp = ollama.chat(
-        model=c.SLM_MODEL,
-        messages=[{"role": "system", "content": system},
-                  {"role": "user", "content": user_msg}],
-        options=c.SLM_OPTIONS,
-    )
+    try:
+        resp = ollama.chat(
+            model=c.SLM_MODEL,
+            messages=[{"role": "system", "content": system},
+                      {"role": "user", "content": user_msg}],
+            options=c.SLM_OPTIONS,
+            think=False,                     # qwen3 '사고' 끄기 → 속도↑·토큰↓·재현성↑
+        )
+    except TypeError:
+        # 구버전 ollama-python(think 미지원) → 프롬프트에 /no_think 로 대체
+        resp = ollama.chat(
+            model=c.SLM_MODEL,
+            messages=[{"role": "system", "content": system + " /no_think"},
+                      {"role": "user", "content": user_msg}],
+            options=c.SLM_OPTIONS,
+        )
     text = resp["message"]["content"]
     ptok = resp.get("prompt_eval_count", 0); ctok = resp.get("eval_count", 0)
     _trace("slm", system, user_msg, text, ptok, ctok)
