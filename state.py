@@ -66,6 +66,14 @@ class RunState(TypedDict, total=False):
     prompt_tokens: Annotated[int, _add_int]
     completion_tokens: Annotated[int, _add_int]
 
+    # ── 커맨더 개입 채널 (LangGraph가 유지하도록 명시 — 없으면 노드 출력이 버려짐) ──
+    commander_note: str            # route 분배 메모
+    commander_input: str           # 가이드/검토 피드백 → 다음 SLM 프롬프트에 주입(L3+)
+    forced_decision: dict[str, Any]  # L4 control_ml이 지정한 모델·HP
+    last_verdict: str              # 검토 판정: 통과|재시도
+    last_feedback: str             # 검토 사유
+    retry_counts: dict[str, int]   # 단계별 재시도 횟수
+
     # ── 로그 누적 ───────────────────────────────────────────
     stage_logs: Annotated[list[StageLog], operator.add]
     current_stage: str             # 현재 처리 중 단계 (retry 라우팅용)

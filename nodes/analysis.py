@@ -85,17 +85,43 @@ def tune_hp(task, model_name, prep, data):
         return {}
 
 
+def l4_optimize(task, candidates, prep, data, hint=None):
+    """L4 전용: 후보군 전체를 train CV로 평가 → 최고 모델 선택 + HP 그리드서치 튜닝.
+    (후보군 안에서만 = 발명 금지 원칙 유지). 이상탐지는 비지도라 라벨 튜닝 누수 위험 → 첫 후보 기본."""
+    if task == "anomaly":
+        return {"model": (hint if hint in candidates else candidates[0]), "hyperparams": {}, "tuned": False}
+    from sklearn.model_selection import cross_val_score
+    X_train, y_train, X_test, y_test = data
+    Xtr, _ = apply_preprocessing(X_train, X_test, prep["feature_cols"], prep["scaler"])
+    scoring = {"regression": "r2", "classification": "f1"}[task]
+    best = None
+    for m in candidates:
+        grid = c.HP_SEARCH_SPACE.get(m, {})
+        try:
+            if grid:
+                gs = GridSearchCV(build_model(m, {}), grid, scoring=scoring, cv=3, n_jobs=-1)
+                gs.fit(Xtr, y_train); sc = float(gs.best_score_); params = gs.best_params_
+            else:
+                sc = float(cross_val_score(build_model(m, {}), Xtr, y_train, scoring=scoring, cv=3).mean()); params = {}
+        except Exception:
+            continue
+        params = {k: (v.item() if hasattr(v, "item") else v) for k, v in params.items()}
+        if best is None or sc > best[0]:
+            best = (sc, m, params)
+    if best is None:
+        return {"model": candidates[0], "hyperparams": {}, "tuned": False}
+    return {"model": best[1], "hyperparams": best[2], "tuned": True}
+
+
 def analysis_node(state):
     task = state["task"]; prep = state["preprocessing"]; candidates = c.MODEL_CANDIDATES[task]
     import data_prep as dp
     data = dp.make_task(task)
     forced = state.get("forced_decision")
-    if forced:
-        hp = forced.get("hyperparams") or {}
-        if not hp:                              # L4: 커맨더가 후보군 내 HP를 직접 튜닝(그리드서치)
-            hp = tune_hp(task, forced["model"], prep, data)
-        decision = {"model": forced["model"], "hyperparams": hp,
-                    "decided_by": "commander", "tuned": bool(hp)}
+    if forced:                                  # L4: 커맨더가 후보군 전체 최적화(모델 선택 + HP 튜닝)
+        opt = l4_optimize(task, candidates, prep, data, hint=forced.get("model"))
+        decision = {"model": opt["model"], "hyperparams": opt["hyperparams"],
+                    "decided_by": "commander", "tuned": opt["tuned"]}
         ptok = ctok = 0; slm_n = 0
     else:
         user = (commander_prefix(state) +
