@@ -13,7 +13,9 @@ from sklearn.ensemble import (RandomForestRegressor, RandomForestClassifier,
 from sklearn.svm import SVC, OneClassSVM
 from sklearn.neighbors import LocalOutlierFactor
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
-from sklearn.metrics import f1_score, r2_score, mean_squared_error, roc_auc_score
+from sklearn.metrics import (f1_score, r2_score, mean_squared_error, roc_auc_score,
+                             precision_score, recall_score, accuracy_score,
+                             mean_absolute_error, average_precision_score)
 
 MODEL_REGISTRY = {
     "LinearRegression": LinearRegression, "RandomForestRegressor": RandomForestRegressor,
@@ -44,16 +46,25 @@ def run_ml(task, decision, prep, data):
     model = build_model(decision["model"], decision.get("hyperparams", {}))
     if task == "regression":
         model.fit(Xtr, y_train); pred = model.predict(Xte)
-        return float(r2_score(y_test, pred)), {"rmse": float(np.sqrt(mean_squared_error(y_test, pred)))}, {"pred_rul": pred.tolist()}
+        return float(r2_score(y_test, pred)), {
+            "rmse": float(np.sqrt(mean_squared_error(y_test, pred))),
+            "mae":  float(mean_absolute_error(y_test, pred)),
+        }, {"pred_rul": pred.tolist()}
     if task == "classification":
         model.fit(Xtr, y_train); pred = model.predict(Xte)
         proba = (model.predict_proba(Xte)[:, 1].tolist() if hasattr(model, "predict_proba") else pred.astype(float).tolist())
-        return float(f1_score(y_test, pred)), {}, {"pred_class": pred.tolist(), "proba": proba}
+        return float(f1_score(y_test, pred, zero_division=0)), {
+            "precision": float(precision_score(y_test, pred, zero_division=0)),
+            "recall":    float(recall_score(y_test, pred, zero_division=0)),
+            "accuracy":  float(accuracy_score(y_test, pred)),
+        }, {"pred_class": pred.tolist(), "proba": proba}
     if task == "anomaly":
         model.fit(Xtr)
         raw = (model.decision_function(Xte) if hasattr(model, "decision_function") else model.score_samples(Xte))
         scores = (-np.asarray(raw)).tolist()
-        return float(roc_auc_score(y_test, scores)), {}, {"anomaly_score": scores}
+        return float(roc_auc_score(y_test, scores)), {
+            "pr_auc": float(average_precision_score(y_test, scores)),
+        }, {"anomaly_score": scores}
     raise ValueError(task)
 
 def analysis_node(state):
