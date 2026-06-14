@@ -41,16 +41,22 @@ def summarize(runs):
         scores = [r["score"] for r in done if r.get("score") is not None]
         models = [r["model"] for r in done if r.get("model")]
         actions = [r.get("actions") for r in done]
+        preps = [(r.get("preprocessing_mode"), r.get("scaler")) for r in done if r.get("preprocessing_mode")]
         rows.append({
             "level": level, "task": task, "n": len(g),
             "완주율": round(sum(1 for r in g if r.get("completed")) / len(g), 2),
             "점수평균": round(statistics.mean(scores), 3) if scores else None,
             "점수편차": round(statistics.pstdev(scores), 3) if len(scores) > 1 else 0.0,
             "모델일관성": round(_mode_freq(models), 2) if models else None,
+            "전처리일관성": round(_mode_freq(preps), 2) if preps else None,
             "처방일관성": (round(_prescription_consistency(actions), 2)
                           if _prescription_consistency(actions) is not None else None),
+            "평균재시도": round(statistics.mean([sum((r.get("retry_counts") or {}).values()) for r in g]), 2),
             "커맨더호출": round(statistics.mean([r.get("commander_calls", 0) for r in g]), 1),
+            "SLM호출": round(statistics.mean([r.get("slm_calls", 0) for r in g]), 1),
             "토큰": round(statistics.mean([r.get("prompt_tokens", 0) + r.get("completion_tokens", 0) for r in g])),
+            "커맨더초": round(statistics.mean([r.get("commander_sec", 0) or 0 for r in g]), 1),
+            "SLM초": round(statistics.mean([r.get("slm_sec", 0) or 0 for r in g]), 1),
             "시간": round(statistics.mean([r.get("elapsed_sec", 0) for r in g]), 1),
         })
     return rows
@@ -72,8 +78,11 @@ def by_level(rows):
         out.append({
             "level": level,
             "완주율": avg("완주율"), "점수편차": avg("점수편차"),
-            "모델일관성": avg("모델일관성"), "처방일관성": avg("처방일관성"),
-            "커맨더호출": avg("커맨더호출"), "토큰": avg("토큰"), "시간": avg("시간"),
+            "모델일관성": avg("모델일관성"), "전처리일관성": avg("전처리일관성"),
+            "처방일관성": avg("처방일관성"), "평균재시도": avg("평균재시도"),
+            "커맨더호출": avg("커맨더호출"), "SLM호출": avg("SLM호출"),
+            "토큰": avg("토큰"), "커맨더초": avg("커맨더초"), "SLM초": avg("SLM초"),
+            "시간": avg("시간"),
         })
     return out
 
@@ -94,11 +103,13 @@ if __name__ == "__main__":
     print(f"총 {len(runs)}런 분석\n")
     rows = summarize(runs)
     print("=== 레벨×태스크 상세 ===")
-    _print_table(rows, ["level", "task", "n", "완주율", "점수평균", "점수편차",
-                        "모델일관성", "처방일관성", "커맨더호출", "토큰", "시간"])
+    _print_table(rows, ["level", "task", "n", "완주율", "점수평균", "점수편차", "모델일관성",
+                        "전처리일관성", "처방일관성", "평균재시도", "커맨더호출", "SLM호출",
+                        "토큰", "커맨더초", "SLM초", "시간"])
     print("\n=== 레벨별 요약 (안정성 ↔ 비용 트레이드오프) ===")
     lv = by_level(rows)
-    _print_table(lv, ["level", "완주율", "점수편차", "모델일관성", "처방일관성", "커맨더호출", "토큰", "시간"])
+    _print_table(lv, ["level", "완주율", "점수편차", "모델일관성", "전처리일관성", "처방일관성",
+                      "평균재시도", "커맨더호출", "SLM호출", "토큰", "커맨더초", "SLM초", "시간"])
 
     # CSV 저장
     os.makedirs(c.RESULT_DIR, exist_ok=True)

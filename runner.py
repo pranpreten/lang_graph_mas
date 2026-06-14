@@ -63,7 +63,9 @@ def run_batch(levels, tasks, repeats, dry=False, fresh=False):
                 flag = "" if final.get("error") is None else f" ⚠{final.get('error')[:40]}"
                 print(f"[{done}/{total}] {level} {task} r{r} | "
                       f"완주={final.get('completed')} 점수={final.get('score')} "
-                      f"커맨더={final.get('commander_calls')} {elapsed:.1f}s{flag}")
+                      f"커맨더={final.get('commander_calls')}({llm.TIMING['commander_sec']:.0f}s) "
+                      f"SLM({llm.TIMING['slm_sec']:.0f}s) 재시도={final.get('retry_counts', {})} "
+                      f"총{elapsed:.1f}s{flag}")
 
     print(f"\n완료: {done}런, 총 {time.time()-t_start:.0f}초. → {LOG_PATH}")
 

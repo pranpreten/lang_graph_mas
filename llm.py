@@ -18,18 +18,23 @@ _CTX = {"run_id": None}
 COMMANDER_TIMEOUT = 120      # 초
 SLM_TIMEOUT = 180            # 초
 
+# 런 단위 시간 누적 (병목 분석용). set_run_id 때 0으로 리셋.
+TIMING = {"commander_sec": 0.0, "slm_sec": 0.0}
+
 
 def set_run_id(run_id):
     _CTX["run_id"] = run_id
+    TIMING["commander_sec"] = 0.0
+    TIMING["slm_sec"] = 0.0
 
 
-def _trace(role, system, user, response, ptok, ctok):
+def _trace(role, system, user, response, ptok, ctok, dur=None):
     if not TRACE:
         return
     os.makedirs(c.LOG_DIR, exist_ok=True)
     rec = {"run_id": _CTX["run_id"], "role": role, "ts": round(time.time(), 3),
            "system": system, "input": user, "response": response,
-           "prompt_tokens": ptok, "completion_tokens": ctok}
+           "prompt_tokens": ptok, "completion_tokens": ctok, "dur_sec": dur}
     with open(TRACE_PATH, "a", encoding="utf-8") as f:
         f.write(json.dumps(rec, ensure_ascii=False) + "\n")
 
@@ -54,13 +59,16 @@ def _get_ollama():
 
 def call_commander(system, user_msg, max_tokens=1024):
     """커맨더 LLM(Claude Opus 4.8) 호출."""
+    t0 = time.perf_counter()
     resp = _get_anthropic().messages.create(
         model=c.COMMANDER_MODEL, max_tokens=max_tokens,
         system=system, messages=[{"role": "user", "content": user_msg}],
     )
+    dur = time.perf_counter() - t0
+    TIMING["commander_sec"] += dur
     text = resp.content[0].text
     ptok, ctok = resp.usage.input_tokens, resp.usage.output_tokens
-    _trace("commander", system, user_msg, text, ptok, ctok)
+    _trace("commander", system, user_msg, text, ptok, ctok, dur)
     return text, ptok, ctok
 
 
@@ -74,13 +82,16 @@ def call_slm(system, user_msg):
                   messages=[{"role": "system", "content": system + " /no_think"},
                             {"role": "user", "content": user_msg}],
                   options=c.SLM_OPTIONS)
+    t0 = time.perf_counter()
     try:
         resp = client.chat(think=False, **kwargs)
     except TypeError:
         resp = client.chat(**kwargs)          # 구버전: /no_think 토큰만으로 처리
+    dur = time.perf_counter() - t0
+    TIMING["slm_sec"] += dur
     text = resp["message"]["content"]
     ptok = resp.get("prompt_eval_count", 0); ctok = resp.get("eval_count", 0)
-    _trace("slm", system, user_msg, text, ptok, ctok)
+    _trace("slm", system, user_msg, text, ptok, ctok, dur)
     return text, ptok, ctok
 
 

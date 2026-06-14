@@ -114,7 +114,7 @@ INTERVENTION_POLICY = {
     "L4": {"route": True, "pre": True,  "post": True,  "control_ml": True},   # ≈15회+
 }
 
-MAX_RETRIES = 2          # post에서 '재시도' 판정 시 같은 단계 최대 재실행 횟수
+MAX_RETRIES = 1          # post '재시도' 시 같은 단계 최대 재실행 (2→1: 결정론ML이라 재시도 무의미·비용절감)
 STAGES = ["perception", "preprocessing", "analysis", "prescription"]  # 고정 순서
 
 # 검토(review) 품질 임계값 — 분석 점수가 이 미만이면 자동 재시도 (1층, 코드 판정).

@@ -2,6 +2,7 @@
 import os, sys, json
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import config as c
+import llm
 
 LOG_PATH = os.path.join(c.LOG_DIR, "runs.jsonl")
 
@@ -17,15 +18,20 @@ def log_run(state, elapsed_sec, path=LOG_PATH):
         "seed": state.get("seed"),
         "model": dec.get("model"),
         "decided_by": dec.get("decided_by"),
+        "tuned": dec.get("tuned", False),
         "score": state.get("score"),
         "score_detail": state.get("score_detail", {}),
         "completed": state.get("completed", False),
         "error": state.get("error"),
         "commander_calls": state.get("commander_calls", 0),
         "slm_calls": state.get("slm_calls", 0),
+        "preprocessing_mode": (state.get("preprocessing") or {}).get("features_mode"),
+        "scaler": (state.get("preprocessing") or {}).get("scaler"),
         "prompt_tokens": state.get("prompt_tokens", 0),
         "completion_tokens": state.get("completion_tokens", 0),
         "elapsed_sec": round(elapsed_sec, 2),
+        "commander_sec": round(llm.TIMING.get("commander_sec", 0.0), 2),
+        "slm_sec": round(llm.TIMING.get("slm_sec", 0.0), 2),
         "retry_counts": state.get("retry_counts", {}),
         "actions": state.get("prescription", {}).get("actions"),   # 처방 일관성용
     }

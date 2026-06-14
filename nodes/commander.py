@@ -56,7 +56,8 @@ def review(state, stage):
                 **_log(f"review:{stage}", 0, 0, f"재시도(객관): {reason}")}
     criteria = prompts.REVIEW_CRITERIA.get(stage, "명백히 이상하면 재시도, 아니면 통과.")
     snapshot = {
-        "perception": state.get("data_summary", {}).get("task"),
+        "perception": {k: state.get("data_summary", {}).get(k)
+                       for k in ("task", "kind", "n_samples", "n_features", "low_variance_features")},
         "preprocessing": state.get("preprocessing"),
         "analysis": {"model": state.get("decision", {}).get("model"), "score": state.get("score")},
         "prescription": state.get("prescription", {}).get("counts"),
